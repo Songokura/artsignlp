@@ -118,6 +118,9 @@ button,input{font:inherit;color:inherit}
 .phones{display:flex;justify-content:center;gap:18px}
 .shot-phone{width:min(240px,46%)}
 .shot-phone img{border-radius:22px;border:6px solid #0b1220;aspect-ratio:740/1000;object-fit:cover;object-position:top;width:100%;height:auto}
+.chats{align-items:center;gap:22px}
+.shot-chat{width:min(340px,48%)}
+.shot-chat img{width:100%;height:auto;border-radius:18px;border:6px solid #0b1220;box-shadow:0 20px 40px -24px rgba(11,18,32,.6)}
 .fine{text-align:center;font-size:13px;color:var(--muted);margin-top:6px}
 .mid-cta{margin-top:36px;text-align:center}
 .mid-cta p{font-weight:700;font-size:18px;margin-bottom:14px}
@@ -368,6 +371,8 @@ button,input{font:inherit;color:inherit}
   .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
   .case{padding:20px 16px}
   .case-badge{white-space:normal}
+  .chats{flex-direction:column}
+  .shot-chat{width:100%;max-width:360px}
   .final{padding:64px 0 72px}
   .final-copy>p{font-size:16px}
   .ftr{padding-bottom:96px}
