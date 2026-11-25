@@ -26,9 +26,14 @@
     if (u.utm_campaign) out += ' / ' + u.utm_campaign;
     return out.slice(0, 120);
   }
-  function note(u) {
+  var calcPick = null; // выбор в калькуляторе: ниша и бюджет
+  function note(u, need) {
+    var parts = [];
+    if (need) parts.push('Нужно: ' + need);
+    if (calcPick) parts.push('Калькулятор: ' + calcPick.niche + ', бюджет $' + calcPick.budget + '/день');
     var p = Object.keys(u).map(function (k) { return k + '=' + u[k]; });
-    return p.length ? 'Реклама: ' + p.join('; ') : null;
+    if (p.length) parts.push('Реклама: ' + p.join('; '));
+    return parts.length ? parts.join(' | ').slice(0, 500) : null;
   }
 
   // Маска 8 (XXX) XXX-XX-XX
@@ -91,7 +96,7 @@
       fetch(SB_URL + '/rest/v1/rpc/submit_lead', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY },
-        body: JSON.stringify({ p_name: name.value.trim(), p_phone: phone.value.trim(), p_source: sourceLabel(utm), p_note: note(utm) })
+        body: JSON.stringify({ p_name: name.value.trim(), p_phone: phone.value.trim(), p_source: sourceLabel(utm), p_note: note(utm, (form.querySelector('input[name=need]:checked') || {}).value) })
       }).then(function (r) {
         if (!r.ok) throw new Error('HTTP ' + r.status);
         if (typeof window.fbq === 'function') window.fbq('track', 'Lead');
@@ -143,6 +148,53 @@
       bar.classList.toggle('is-on', !any && window.scrollY > 200);
     }, { passive: true });
   }
+
+
+  // Калькулятор: та же модель, что на artsign.kz (медиана кабинетов $0,69 за клик, конверсия 9,8%, коэффициенты ниш - оценка студии)
+  var NICHE = { auto: [.75, 1.6], med: [1.25, 1.3], build: [1.1, .85], home: [1, 1.05], law: [1.5, .75], b2b: [1.2, .7], beauty: [.85, 1.1], other: [1, 1] };
+  var calcForm = document.getElementById('calcForm');
+  if (calcForm) {
+    var nicheSel = document.getElementById('niche'), budget = document.getElementById('budget'), bOut = document.getElementById('budgetOut');
+    var bars = document.getElementById('calcBars');
+    var DAYF = [];
+    for (var i = 0; i < 30; i++) DAYF.push((i % 7 === 5 || i % 7 === 6 ? .72 : 1.08) * (1 + .22 * Math.sin(i * 2.3) * Math.cos(i * .7)));
+    var dmax = Math.max.apply(null, DAYF);
+    bars.innerHTML = new Array(31).join('<i></i>');
+    var barEls = bars.querySelectorAll('i');
+    var nf = function (n) { return Math.round(n).toLocaleString('ru-RU'); };
+    var money = function (n) { return '$' + (n < 10 ? n.toFixed(2) : n.toFixed(1)).replace('.', ','); };
+    var calcRun = function () {
+      var k = NICHE[nicheSel.value] || NICHE.other, b = +budget.value;
+      var cpc = .69 * k[0], cr = .098 * k[1];
+      var clicks = b * 30 / cpc, leads = clicks * cr, cpl = cpc / cr;
+      bOut.value = '$' + b; bOut.textContent = '$' + b;
+      budget.style.setProperty('--fill', ((b - 5) / 45 * 100).toFixed(1) + '%');
+      document.getElementById('rLeads').textContent = nf(leads * .75) + '-' + nf(leads * 1.25);
+      document.getElementById('rCpl').textContent = money(cpl * .8) + '-' + money(cpl * 1.3);
+      document.getElementById('rClicks').textContent = '~' + nf(clicks);
+      var scale = Math.min(1, leads / 30 / 12 + .25); // бюджет растёт - столбики выше
+      for (var j = 0; j < 30; j++) barEls[j].style.height = (DAYF[j] / dmax * scale * 100).toFixed(1) + '%';
+    };
+    nicheSel.addEventListener('change', calcRun);
+    budget.addEventListener('input', calcRun);
+    calcRun();
+    calcForm.addEventListener('submit', function (e) {
+      e.preventDefault();
+      calcPick = { niche: nicheSel.options[nicheSel.selectedIndex].textContent, budget: budget.value };
+      var final = document.getElementById('zayavka');
+      var pick = final.querySelector('.calc-pick');
+      if (pick) { pick.textContent = 'Расчёт для ниши «' + calcPick.niche + '», бюджет $' + calcPick.budget + ' в день'; pick.hidden = false; }
+      var ad = final.querySelector('input[name=need][value="Реклама"]');
+      if (ad && !final.querySelector('input[name=need]:checked')) ad.checked = true;
+      goToForm('zayavka');
+    });
+  }
+
+  // Meta Pixel: клик по WhatsApp или звонку - событие Contact (фаза захвата, ссылку не трогаем - LeadBot дописывает код сам)
+  window.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('a[href^="tel:"], a[href*="wa.me/"]');
+    if (a && typeof window.fbq === 'function') window.fbq('track', 'Contact', { content_name: a.href.indexOf('tel:') === 0 ? 'phone' : 'whatsapp' });
+  }, true);
 
   // Проявление блоков
   var rv = document.querySelectorAll('.rv');
