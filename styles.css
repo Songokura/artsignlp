@@ -396,3 +396,5 @@ button,input{font:inherit;color:inherit}
   *,*::before,*::after{animation:none!important;transition:none!important}
   .js .rv{opacity:1}
 }
+.revs:has(>.rev:only-child){grid-template-columns:minmax(0,620px);justify-content:center}
+.case-top+.phones{margin-top:24px}
